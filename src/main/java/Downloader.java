@@ -6,28 +6,40 @@ import org.jsoup.select.Elements;
 import java.io.*;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class Downloader {
 
-    private static final String TRETTON_37_BASE_URL = "https://tretton37.com";
-    private static final String TARGET_DIRECTORY = "page.html";
-
     public static void main(String[] args) {
-        int depth = 2;
+        String baseUrl = args[0];
+        int depth = Integer.parseInt(args[1]);
+        String dir = args[2];
 
         try {
-            download(TRETTON_37_BASE_URL, depth);
+            download(baseUrl, depth, dir);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    public static void download(String urlString, int depth) throws IOException {
+    public static void download(String urlString, int depth, String dir) throws IOException {
+
+        if (depth == 0) {
+            return;
+        }
+
+        File directory = new File(dir);
+        if (! directory.exists()){
+            directory.mkdir();
+        }
+
         URL url = new URL(urlString);
+        List<String> childDirs;
         try (
                 BufferedReader reader = new BufferedReader(new InputStreamReader(url.openStream()));
-                BufferedWriter writer = new BufferedWriter(new FileWriter(TARGET_DIRECTORY));
+                BufferedWriter writer = new BufferedWriter(new FileWriter(dir + "/" + dir + ".html"))
         ) {
             StringBuilder htmlContent = new StringBuilder();
             String line;
@@ -36,9 +48,13 @@ public class Downloader {
                 htmlContent.append(line);
             }
             System.out.println(htmlContent);
-            List<String> childDirs = findChildDirs(htmlContent.toString());
+            childDirs = findChildDirs(htmlContent.toString());
         }
         depth--;
+
+        for (String childDir : childDirs) {
+            download(urlString + childDir, depth, dir + childDir);
+        }
     }
 
     private static List<String> findChildDirs(String htmlContent) {
@@ -51,6 +67,9 @@ public class Downloader {
                 childDirs.add(href);
             }
         }
+        System.out.println("Found dirs:");
+        System.out.println(Arrays.toString(childDirs.toArray()));
+        childDirs = childDirs.stream().distinct().collect(Collectors.toList());
         return childDirs;
     }
 }
