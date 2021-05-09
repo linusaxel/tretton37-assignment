@@ -1,22 +1,32 @@
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Main {
 
     public static void main(String[] args) throws Exception {
-        String baseUrl = args[0];
-        String dir = "index";
 
-        HTMLDownloader firstThread = new HTMLDownloader(baseUrl, dir);
-        firstThread.start();
-        firstThread.join();
+        //Store URL from program argument
+        String baseURL = args[0];
 
-        List<String> childDirs = firstThread.getChildDirs();
+        //Store URL to a common resource that tracks which URLs have been downloaded
+        HashMap<String, Boolean> dirs = new HashMap<>();
+        dirs.put(baseURL, false);
+        DownloadedDirs downloadedDirs = new DownloadedDirs(dirs);
 
-        for (String childDir : childDirs) {
-            HTMLDownloader HTMLDownloader = new HTMLDownloader(baseUrl + childDir, childDir);
-            HTMLDownloader.start();
+        //Create first thread that downloads from baseURL
+        HTMLDownloader thread1 = new HTMLDownloader(downloadedDirs, baseURL);
+        thread1.start();
+        thread1.join();
+
+        downloadedDirs.printDirs();
+
+        for (Map.Entry<String, Boolean> entry : downloadedDirs.getDirs().entrySet()) {
+            if (entry.getValue().equals(Boolean.FALSE)) {
+                HTMLDownloader thread = new HTMLDownloader(downloadedDirs, entry.getKey());
+                thread.start();
+            }
         }
 
+        downloadedDirs.printDirs();
     }
-
 }
