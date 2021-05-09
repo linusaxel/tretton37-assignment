@@ -1,32 +1,43 @@
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.*;
 
 public class Main {
 
-    public static void main(String[] args) throws Exception {
+    private static final int NUM_THREADS = 10;
 
-        //Store URL from program argument
+    public static void main(String[] args) {
+
+        System.out.println();
+
+        //Store URL to a concurrent hash map used as a common resource that tracks which paths have been downloaded
         String baseURL = args[0];
+        ConcurrentHashMap<String, Boolean> pathsMap = new ConcurrentHashMap<>();
+        pathsMap.put(baseURL, false);
 
-        //Store URL to a common resource that tracks which URLs have been downloaded
-        HashMap<String, Boolean> dirs = new HashMap<>();
-        dirs.put(baseURL, false);
-        DownloadedDirs downloadedDirs = new DownloadedDirs(dirs);
+        ExecutorService executorService = Executors.newFixedThreadPool(NUM_THREADS);
 
-        //Create first thread that downloads from baseURL
-        HTMLDownloader thread1 = new HTMLDownloader(downloadedDirs, baseURL);
-        thread1.start();
-        thread1.join();
-
-        downloadedDirs.printDirs();
-
-        for (Map.Entry<String, Boolean> entry : downloadedDirs.getDirs().entrySet()) {
-            if (entry.getValue().equals(Boolean.FALSE)) {
-                HTMLDownloader thread = new HTMLDownloader(downloadedDirs, entry.getKey());
-                thread.start();
+        //Limit to 5 for now?
+        for (int i = 0; i < 3; i++) {
+            for (Map.Entry<String, Boolean> entry : pathsMap.entrySet()) {
+                if (entry.getValue().equals(Boolean.FALSE)) {
+                    Future<ConcurrentHashMap<String, Boolean>> future = executorService.submit(new DownloadCallable(pathsMap, entry.getKey()));
+                    try {
+                        pathsMap = future.get();
+                    } catch (InterruptedException | ExecutionException e) {
+                        e.printStackTrace();
+                    }
+                }
             }
         }
 
-        downloadedDirs.printDirs();
+        executorService.shutdown();
+        try {
+            if (!executorService.awaitTermination(800, TimeUnit.MILLISECONDS)) {
+                executorService.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executorService.shutdownNow();
+        }
+
     }
 }

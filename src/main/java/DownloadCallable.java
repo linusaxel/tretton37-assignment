@@ -12,20 +12,24 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-public class HTMLDownloader extends Thread {
+public class DownloadCallable implements Callable<ConcurrentHashMap<String, Boolean>> {
 
     private final String urlString;
-    private final DownloadedDirs downloadedDirs;
+    private final ConcurrentHashMap<String, Boolean> pathsMap;
 
-    public HTMLDownloader(DownloadedDirs downloadedDirs, String urlString) {
+    public DownloadCallable(ConcurrentHashMap<String, Boolean> pathsMap, String urlString) {
+        this.pathsMap = pathsMap;
         this.urlString = urlString;
-        this.downloadedDirs = downloadedDirs;
     }
 
     @Override
-    public void run() {
+    public ConcurrentHashMap<String, Boolean> call() {
+
+        System.out.println(Thread.currentThread().getName() + " downloading:" + urlString);
 
         URL url = null;
         try {
@@ -33,8 +37,6 @@ public class HTMLDownloader extends Thread {
         } catch (MalformedURLException e) {
             e.printStackTrace();
         }
-
-        System.out.println("Downloading page: " + url);
 
         try {
             Files.createDirectories(Paths.get(url.getHost() + url.getPath()));
@@ -53,32 +55,35 @@ public class HTMLDownloader extends Thread {
                 htmlContent.append(line);
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("Couldn't download from: " + urlString);
         }
 
+        //Update map of paths
         List<String> paths = findPaths(htmlContent.toString());
         for (String path : paths) {
-            if (!downloadedDirs.getDirs().containsKey(path)) {
-                downloadedDirs.addDir(url.getProtocol() + "://" +  url.getHost() + path, false);
+            if (!pathsMap.containsKey(path)) {
+                pathsMap.put(url.getProtocol() + "://" +  url.getHost() + path, false);
             }
         }
 
-        downloadedDirs.markAsDownloaded(urlString);
+        pathsMap.put(urlString, true);
+        System.out.println(Thread.currentThread().getName() + " finished downloading:" + urlString);
+        return pathsMap;
     }
 
     public static List<String> findPaths(String htmlContent) {
         Document document = Jsoup.parse(htmlContent);
         Elements elements = document.select("a[href]");
-        List<String> childDirs = new ArrayList<>();
+        List<String> paths = new ArrayList<>();
         for (Element element: elements) {
             String href = element.attr("href");
             if (href.startsWith("/") && (href.length() > 1)) {
-                childDirs.add(href);
+                paths.add(href);
             }
         }
-        childDirs = childDirs.stream().distinct().collect(Collectors.toList());
-        System.out.println("Found child dirs: " + Arrays.toString(childDirs.toArray()));
-        return childDirs;
+        paths = paths.stream().distinct().collect(Collectors.toList());
+        System.out.println("Found paths: " + Arrays.toString(paths.toArray()));
+        return paths;
     }
 
 }
