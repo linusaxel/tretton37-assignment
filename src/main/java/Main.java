@@ -9,14 +9,12 @@ public class Main {
 
         System.out.println();
 
-        //Store URL to a concurrent hash map used as a common resource that tracks which paths have been downloaded
         String baseURL = args[0];
         ConcurrentHashMap<String, Boolean> pathsMap = new ConcurrentHashMap<>();
         pathsMap.put(baseURL, false);
 
         ExecutorService executorService = Executors.newFixedThreadPool(NUM_THREADS);
 
-        //Limit to 5 for now?
         for (int i = 0; i < 3; i++) {
             for (Map.Entry<String, Boolean> entry : pathsMap.entrySet()) {
                 if (entry.getValue().equals(Boolean.FALSE)) {
@@ -38,6 +36,8 @@ public class Main {
         } catch (InterruptedException e) {
             executorService.shutdownNow();
         }
+
+        System.out.println("Done! Download of " + baseURL + " and child directories successful.");
 
     }
 }

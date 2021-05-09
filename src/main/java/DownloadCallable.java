@@ -35,13 +35,13 @@ public class DownloadCallable implements Callable<ConcurrentHashMap<String, Bool
         try {
             url = new URL(urlString);
         } catch (MalformedURLException e) {
-            e.printStackTrace();
+            System.out.println("Invalid URL");
         }
 
         try {
             Files.createDirectories(Paths.get(url.getHost() + url.getPath()));
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("Couldn't create directory: " + url.getHost() + url.getPath());
         }
 
         StringBuilder htmlContent = new StringBuilder();
@@ -58,7 +58,7 @@ public class DownloadCallable implements Callable<ConcurrentHashMap<String, Bool
             System.out.println("Couldn't download from: " + urlString);
         }
 
-        //Update map of paths
+        //Update pathsMap
         List<String> paths = findPaths(htmlContent.toString());
         for (String path : paths) {
             if (!pathsMap.containsKey(path)) {
