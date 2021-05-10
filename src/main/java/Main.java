@@ -1,31 +1,20 @@
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.*;
 
 public class Main {
 
-    private static final int NUM_THREADS = 10;
-
     public static void main(String[] args) {
 
-        System.out.println();
-
         String baseURL = args[0];
-        ConcurrentHashMap<String, Boolean> pathsMap = new ConcurrentHashMap<>();
+        int DEPTH = Integer.parseInt(args[1]);
+
+        HashMap<String, Boolean> pathsMap = new HashMap<>();
         pathsMap.put(baseURL, false);
 
-        ExecutorService executorService = Executors.newFixedThreadPool(NUM_THREADS);
+        ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
-        for (int i = 0; i < 3; i++) {
-            for (Map.Entry<String, Boolean> entry : pathsMap.entrySet()) {
-                if (entry.getValue().equals(Boolean.FALSE)) {
-                    Future<ConcurrentHashMap<String, Boolean>> future = executorService.submit(new DownloadCallable(pathsMap, entry.getKey()));
-                    try {
-                        pathsMap = future.get();
-                    } catch (InterruptedException | ExecutionException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
+        for(int i = 0; i < DEPTH; i++) {
+            downloadPathsAsynchronously(baseURL, pathsMap, executorService);
         }
 
         executorService.shutdown();
@@ -38,6 +27,36 @@ public class Main {
         }
 
         System.out.println("Done! Download of " + baseURL + " and child directories successful.");
+    }
 
+    private static void downloadPathsAsynchronously(String baseURL, HashMap<String, Boolean> pathsMap, ExecutorService executorService) {
+        List<DownloadCallable> taskList = new ArrayList<>();
+        for (Map.Entry<String, Boolean> entry : pathsMap.entrySet()) {
+            taskList.add(new DownloadCallable(entry.getKey()));
+            pathsMap.replace(entry.getKey(), true);
+        }
+
+        List<Future<List<String>>> resultList = null;
+        try {
+            resultList = executorService.invokeAll(taskList);
+        } catch (InterruptedException e) {
+            System.out.println("Couldn't execute tasks");
+        }
+
+        for (int i = 0; i < Objects.requireNonNull(resultList).size(); i++) {
+            Future<List<String>> futures = resultList.get(i);
+            try {
+                List<String> paths = futures.get();
+                updateMap(baseURL, pathsMap, paths);
+            } catch (InterruptedException | ExecutionException e) {
+                System.out.println("Couldn't get futures");
+            }
+        }
+    }
+
+    private static void updateMap(String baseURL, HashMap<String, Boolean> pathsMap, List<String> paths) {
+        for (String path : paths) {
+            pathsMap.putIfAbsent(baseURL + path, false);
+        }
     }
 }

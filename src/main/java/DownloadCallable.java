@@ -8,26 +8,20 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-public class DownloadCallable implements Callable<ConcurrentHashMap<String, Boolean>> {
+public class DownloadCallable implements Callable<List<String>> {
 
     private final String urlString;
-    private final ConcurrentHashMap<String, Boolean> pathsMap;
 
-    public DownloadCallable(ConcurrentHashMap<String, Boolean> pathsMap, String urlString) {
-        this.pathsMap = pathsMap;
+    public DownloadCallable(String urlString) {
         this.urlString = urlString;
     }
 
     @Override
-    public ConcurrentHashMap<String, Boolean> call() {
+    public List<String> call() {
 
         System.out.println(Thread.currentThread().getName() + " downloading:" + urlString);
 
@@ -58,17 +52,9 @@ public class DownloadCallable implements Callable<ConcurrentHashMap<String, Bool
             System.out.println("Couldn't download from: " + urlString);
         }
 
-        //Update pathsMap
-        List<String> paths = findPaths(htmlContent.toString());
-        for (String path : paths) {
-            if (!pathsMap.containsKey(path)) {
-                pathsMap.put(url.getProtocol() + "://" +  url.getHost() + path, false);
-            }
-        }
-
-        pathsMap.put(urlString, true);
         System.out.println(Thread.currentThread().getName() + " finished downloading:" + urlString);
-        return pathsMap;
+
+        return findPaths(htmlContent.toString());
     }
 
     public static List<String> findPaths(String htmlContent) {
@@ -82,7 +68,6 @@ public class DownloadCallable implements Callable<ConcurrentHashMap<String, Bool
             }
         }
         paths = paths.stream().distinct().collect(Collectors.toList());
-        System.out.println("Found paths: " + Arrays.toString(paths.toArray()));
         return paths;
     }
 
