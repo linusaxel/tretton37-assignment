@@ -13,5 +13,5 @@ The key of the HashMap contains the directory, and the value indicates whether i
 
 ***Usage***: To use this program, download it and run using the Gradle wrapper command and providing the desired base URL and depth as an argument.
 
-`./gradlew run --args='https://tretton37.com' 3
+`./gradlew run --args='https://tretton37.com 3' 
 `
